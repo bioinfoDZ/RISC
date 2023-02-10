@@ -5,6 +5,9 @@
 Integrated analysis of single cell RNA-sequencing (scRNA-seq) data from multiple batches or studies is often necessary in order to learn functional changes in cellular states upon experimental perturbations or cell type relationships in a developmental lineage. Here we introduce a new algorithm (RPCI) that uses the gene-eigenvectors from a reference dataset to establish a global frame for projecting all datasets, with a clear advantage in preserving genuine gene expression differences in matching cell types between samples, such as those present in cells at distinct developmental stages or in perturbated vs control studies. This R package “RISC” (Robust Integration of Sinlgle Cell RNA-seq data implements the RPCI algorithm, with additional functions for scRNA-seq analysis, such as clustering cells, identifying cluster marker genes, detecting differentially expressed genes between experimental conditions, and importantly outputting integrated gene expression values for downstream data analysis.
 
 
+#### RISC v1.6 update
+This version mainly solves the problems that is caused by dependent package updates
+
 #### RISC v1.5 update
 Changes from the last release (v1.0) <br />
 (1) Replace dependent "RcppEigen" with "RcppArmadillo", fully support sparse matrix in core functions. <br />
