@@ -1,0 +1,30 @@
+Package: RISC
+Type: Package
+Title: Robust Integration of Single-Cell RNA-Seq Datasets
+Version: 1.6.0
+Date: 2022-11-11
+Authors@R: c(person("Yang", "Liu", role = c("aut", "cre"), 
+         email = "yanliurisc@gmail.com"), 
+         person("Deyou", "Zheng", role = "aut"), 
+         person("Tao", "Wang", role = "aut"))
+Maintainer: Yang Liu <yanliurisc@gmail.com>
+Description: The 'RISC' package can integrate single cell RNA sequencing data, correct batch effects, cluster cells, identify gene markers, and produce integrated gene expression matrix. More details in URLs below.
+URL: https://www.biorxiv.org/content/10.1101/483297v1.article-info
+        https://github.com/yangRISC/RISC
+Depends: R (>= 4.0.0)
+Imports: Rcpp, Matrix, sparseMatrixStats, MASS, Matrix.utils, pbapply,
+        doParallel, foreach, irlba, Rtsne, umap, densityClust, FNN,
+        igraph, RColorBrewer, ggplot2, gridExtra, pheatmap, hdf5r,
+        methods, grDevices, stats, utils
+LinkingTo: Rcpp, RcppArmadillo
+LazyData: true
+Encoding: UTF-8
+RoxygenNote: 7.2.2
+Suggests: testthat, usethis, knitr, rmarkdown
+VignetteBuilder: knitr
+NeedsCompilation: yes
+License: GPL-3 | file LICENSE
+Packaged: 2022-11-13 23:17:37 UTC; liuy128
+Author: Yang Liu [aut, cre],
+  Deyou Zheng [aut],
+  Tao Wang [aut]

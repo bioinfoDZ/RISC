@@ -1,0 +1,22 @@
+RISC v1.6.0 release (03.22.2022)
+
+Changes from the last release (v1.5)
+This version mainly solves the problems that is caused by dependent package updates
+
+Changes from the last release (v1)
+(1) Replace dependent "RcppEigen" with "RcppArmadillo", fully support sparse matrix in core functions.
+(2) Replace dependent "pbmcapply" with "pbapply"
+(3) Optimize "scMultiIntegrate" function and reduce memory-consuming; the new RISC release can support integration of datasets with >1.5 million cells and 10,000 genes.
+(4) Convert "logcounts" in the integrated RISC object "object@assay$logcount" from a large matrix to a list including multiple logcounts matrices, each corrected matrix for the corresponding individual data sets. To output full integrated matrix, mat0 = do.call(cbind, object@assay$logcount)
+(5) Change function name "readscdata" -> "readsc"
+(6) Change function name "read10Xgenomics" -> "read10X_mtx"
+(7) Parameter names in some functions are changed.
+
+Added new functions
+(1) In "scMarker" and "AllMarker" functions, add Wilcoxon Rank Sum and Signed Rank model.
+(2) In "scMarker", "AllMarker" and "scDEG" functions, add pseudo-cell (bin cells to generate meta-cells) option to detect marker genes.
+(3) Add "slot" parameter in "DimPlot" function, external dimension reduction results can be added in RISC object, e.g. add phate results (phate0) to RISC object obj0@DimReduction$cell.phate = phate0; DimPlot(obj0, slot = "cell.phate", colFactor = 'Group', size = 2, label = TRUE)
+(4) Add "read10X_h5" function for 10X Genomics h5 file.
+
+Removed old functions
+(1) delete "readHTSeqdata" function.
