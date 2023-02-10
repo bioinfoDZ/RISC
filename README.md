@@ -6,7 +6,7 @@ Integrated analysis of single cell RNA-sequencing (scRNA-seq) data from multiple
 
 
 #### RISC v1.6 update
-This version mainly solves the problems that is caused by dependent package updates
+This version mainly solves the problems that are caused by dependent package updates
 
 #### RISC v1.5 update
 Changes from the last release (v1.0) <br />
