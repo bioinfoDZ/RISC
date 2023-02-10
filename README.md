@@ -67,3 +67,6 @@ file position, "/GSE123813/Raw_Data/bcc_annotation.tsv" <br />
 Old RISC version: "RISC_1.0.tar.gz"
 
 
+### Citation:
+Liu Y, Tao W, Zhou B, Zheng D (2021) Robust integration of multiple single-cell RNA sequencing datasets using a single reference space. 
+ <a href="https://doi.org/10.1038/s41587-021-00859-x">Nat Biotechnol 39(7):877-884.</a>
