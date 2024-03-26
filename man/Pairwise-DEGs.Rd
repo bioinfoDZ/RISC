@@ -9,15 +9,12 @@ scDEG(
   cell.ctrl = NULL,
   cell.sam = NULL,
   frac = 0.1,
-  log2FC = 1,
+  log2FC = 0.5,
   Padj = 0.01,
   latent.factor = NULL,
   method = "NB",
   min.cells = 10,
-  ncore = 1,
-  fast = FALSE,
-  bin_ctrl = 500,
-  bin_sam = 100
+  ncore = 1
 )
 }
 \arguments{
@@ -46,12 +43,6 @@ Wilcoxon Rank-Sum model.}
 \item{min.cells}{The minimum cells for each cluster to calculate marker genes.}
 
 \item{ncore}{The multiple cores for parallel calculating.}
-
-\item{fast}{In the fast way, making cell bins to calculate marker genes.}
-
-\item{bin_ctrl}{When run fast, how many cell bins will use in control cells.}
-
-\item{bin_sam}{When run fast, how many cell bins will use in sample cells.}
 }
 \description{
 This is the basic function in RISC, it can identify the differentially expressed 

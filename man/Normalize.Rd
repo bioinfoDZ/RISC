@@ -10,7 +10,7 @@ scNormalize(
   libsize = 1e+06,
   remove.mito = FALSE,
   norm.dis = TRUE,
-  large = FALSE,
+  large = TRUE,
   ncore = 1
 )
 }

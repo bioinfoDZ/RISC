@@ -6,12 +6,13 @@
 \usage{
 scCluster(
   object,
-  slot = "cell.umap",
+  slot = "cell.pca",
   neighbor = 10,
   algorithm = "kd_tree",
   method = "louvain",
   npc = 20,
   k = 10,
+  res = 0.5,
   dc = NULL,
   redo = TRUE,
   random.seed = 123
@@ -37,6 +38,8 @@ space; while "louvain" based on "cell.pca" (individual data) or "cell.pls"
 \item{npc}{The number of PCA or PLS used for cell clustering.}
 
 \item{k}{The number of cluster searched for, works in "density" method.}
+
+\item{res}{The resolution of cluster searched for, works in "louvain" method.}
 
 \item{dc}{The distance used to generate random center points which affect 
 clusters. If have no idea about this, do not input anything. Keep it as the 

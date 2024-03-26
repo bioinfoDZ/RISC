@@ -11,7 +11,8 @@ scUMAP(
   use = "PCA",
   neighbors = 15,
   dist = 0.1,
-  seed = 123
+  seed = 123,
+  ...
 )
 }
 \arguments{

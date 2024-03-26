@@ -40,9 +40,9 @@
 #' obj2 = raw.mat[[4]]
 #' obj0 = list(obj1, obj2)
 #' var0 = intersect(obj1@vargene, obj2@vargene)
-#' obj0 = scMultiIntegrate(obj0, eigens = 10, var.gene = var0, align = 'Predict', 
-#'                         npc = 15, add.Id = c("Set1", "Set2"), ncore = 2)
-#' obj0 = scUMAP(obj0, npc = 10, use = "PLS", dist = 0.001, neighbors = 10)
+#' obj0 = scMultiIntegrate(obj0, eigens = 8, var.gene = var0, align = 'Predict', 
+#'                         npc = 20, add.Id = c("Set1", "Set2"), ncore = 2)
+#' obj0 = scUMAP(obj0, npc = 8, use = "PLS", dist = 0.001, neighbors = 15)
 #' DimPlot(obj0, slot = "cell.umap", colFactor = "Set", size = 2)
 #' DimPlot(obj0, slot = "cell.umap", colFactor = "Group", size = 2, label = TRUE)
 
@@ -143,7 +143,8 @@ scMultiIntegrate <- function(
     seed = as.numeric(seed)
     set.seed(seed)
     
-    Var.pca1L = irlba(logcount1L, nv = eigen0, center = TRUE, scale = FALSE)
+    logcount1L = scale(logcount1L, center = TRUE, scale = TRUE)
+    Var.pca1L = irlba(logcount1L, nv = eigen0)
     pb = txtProgressBar(
       min = 0, max = length(add.Id), 
       initial = length(add.Id), style = 3, char = "*",
@@ -153,8 +154,8 @@ scMultiIntegrate <- function(
       logcountl = logcount0[[j]][var.gene,]
       celll = colnames(logcountl)
       PCA1Lu = multiply_d_d(Var.pca1L$u, diag(Var.pca1L$d, nrow = eigen0))
-      # logcountl = scale(logcountl, center = TRUE, scale = FALSE)
-      logcountl = cent_sp_d(logcountl)
+      logcountl = scale(logcountl, center = TRUE, scale = TRUE)
+      # logcountl = cent_sp_d(logcountl)
       PCAjv = crossprod_d_d(PCA1Lu, logcountl) / (Var.pca1L$d)^2
       rm(logcountl)
       beta0 = multiply_d_d(Var.pca1L$v, PCAjv)
@@ -312,7 +313,7 @@ scMultiIntegrate <- function(
 #' obj2 = raw.mat[[4]]
 #' obj0 = list(obj1, obj2)
 #' var0 = intersect(obj1@vargene, obj2@vargene)
-#' PLS0 = scPLS(obj0, var.gene = var0, npc = 10, add.Id = c("Set1", "Set2"), ncore = 1)
+#' PLS0 = scPLS(obj0, var.gene = var0, npc = 20, add.Id = c("Set1", "Set2"), ncore = 1)
 
 scPLS <- function(
     objects, 
@@ -404,7 +405,8 @@ scPLS <- function(
     seed = as.numeric(seed)
     set.seed(seed)
     
-    Var.pca1L = irlba(logcount1L, nv = eigen0, center = TRUE, scale = FALSE)
+    logcount1L = scale(logcount1L, center = TRUE, scale = TRUE)
+    Var.pca1L = irlba(logcount1L, nv = eigen0)
     pb = txtProgressBar(
       min = 0, max = length(add.Id), 
       initial = length(add.Id), style = 3, char = "*",
@@ -414,8 +416,8 @@ scPLS <- function(
       logcountl = logcount0[[j]][var.gene,]
       celll = colnames(logcountl)
       PCA1Lu = multiply_d_d(Var.pca1L$u, diag(Var.pca1L$d, nrow = eigen0))
-      # logcountl = scale(logcountl, center = TRUE, scale = FALSE)
-      logcountl = cent_sp_d(logcountl)
+      logcountl = scale(logcountl, center = TRUE, scale = TRUE)
+      # logcountl = cent_sp_d(logcountl)
       PCAjv = crossprod_d_d(PCA1Lu, logcountl) / (Var.pca1L$d)^2
       rm(logcountl)
       beta0 = multiply_d_d(Var.pca1L$v, PCAjv)
@@ -456,6 +458,7 @@ scPLS <- function(
 #' @param Colors The colors labeling for different data sets.
 #' @param nPC The PCs will be calculated.
 #' @param neighbor The nearest neighbors. 
+#' @param res The resolution of cluster searched for, works in "louvain" method.
 #' @param method The method of cell clustering for individual datasets.
 #' @param algorithm The algorithm for knn, the default is "kd_tree", all options: 
 #' "kd_tree", "cover_tree", "CR", "brute".
@@ -474,6 +477,7 @@ InPlot <- function(
   Colors = NULL, 
   nPC = 20, 
   neighbor = 30, 
+  res = 1.0,
   method = "louvain", 
   algorithm = "kd_tree", 
   ncore = 1, 
@@ -490,6 +494,7 @@ InPlot <- function(
     registerDoParallel(ncore)
     npc = as.integer(nPC)
     neighbor = as.integer(neighbor)
+    res = as.numeric(res)
     method = as.character(method)
     algorithm = as.character(algorithm)
     nset = dim(summary(object))[1]
@@ -526,7 +531,8 @@ InPlot <- function(
   
   PC0 = foreach(i = 1L:nset) %dopar% {
     vari = object[[i]]@assay$logcount[var0,]
-    PCi = irlba(vari, nv = npc, center = T)
+    vari = scale(vari, center = TRUE, scale = TRUE)
+    PCi = irlba(vari, nv = npc)
     return(PCi)
   }
   
@@ -559,8 +565,9 @@ InPlot <- function(
       k0 = get.knn(PC0[[i]]$v[,1L:j], k = neighbor, algorithm = algorithm)
       ki = data.frame(NodStar = rep(1L:nrow(PC0[[i]]$v[,1L:j]), neighbor), NodEnd = as.vector(k0$nn.index), stringsAsFactors = FALSE)
       ki = graph_from_data_frame(ki, directed = FALSE)
+      E(ki)$weight = 1/(1 + as.vector(k0$nn.dist))
       ki = simplify(ki)
-      ki = cluster_louvain(ki, weights = 1/(1 + as.vector(k0$nn.dist)))
+      ki = cluster_louvain(ki, resolution = res)
       k0 = length(unique(ki$membership))
       return(as.integer(k0))
     }

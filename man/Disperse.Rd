@@ -6,35 +6,40 @@
 \usage{
 scDisperse(
   object,
-  method = "quasipoisson",
+  method = "loess",
+  min.UMI = NULL,
   mean.cut = NULL,
-  ncut = 20,
+  QP_bin = 100,
+  lspan = 0.05,
   top.var = NULL,
-  FDR = 0.1,
-  ratio = 1.25
+  pval = 0.5
 )
 }
 \arguments{
 \item{object}{RISC object: a framework dataset.}
 
-\item{method}{What method is used to define dispersion: quasipoisson or residual.
-The default method is "Quasi-Poisson".}
+\item{method}{What method is used to define dispersion, now support "QP" and "loess", 
+the default method is "loess".}
+
+\item{min.UMI}{A cutoff of the minimum UMIs of each gene, the genes expression 
+below the min.UMI will be discarded from highly variable genes. The default value
+is 100 when input NULL.}
 
 \item{mean.cut}{A cutoff of the average value of each gene, the genes expression 
 outside the mean.cut range will be discarded from highly variable genes. The 
 input is a range vector, like c(0.1, 5).}
 
-\item{ncut}{The number of fragments using to fit dispersion. The Quasi-Poinsson 
-model divides genes into a number of bins based on the gene expression. This 
-parameter indicated how many bins are used for Quasi-Poinsson model.}
+\item{QP_bin}{The number of fragments using to fit dispersion in the Quasi-Poinsson 
+model, how many bins are formed in the regression.}
+
+\item{lspan}{The number of parameter using to fit dispersion, controlling the degree 
+of smoothing in the loess model.}
 
 \item{top.var}{The maximum number of highly variable genes, the default is NULL, 
 including all the highly variable genes.}
 
-\item{FDR}{The cutoff for variable genes.}
-
-\item{ratio}{To change mean.cut by ratio, and make RISC robustly to select 
-variable genes. The user can use the default value.}
+\item{pval}{The P-value is used to cut off the highly variable genes, 
+the default is 0.5.}
 }
 \value{
 RISC single cell dataset, the metadata slot.

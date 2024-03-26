@@ -54,9 +54,9 @@ obj1 = raw.mat[[3]]
 obj2 = raw.mat[[4]]
 obj0 = list(obj1, obj2)
 var0 = intersect(obj1@vargene, obj2@vargene)
-obj0 = scMultiIntegrate(obj0, eigens = 10, var.gene = var0, align = 'Predict', 
-                        npc = 15, add.Id = c("Set1", "Set2"), ncore = 2)
-obj0 = scUMAP(obj0, npc = 10, use = "PLS", dist = 0.001, neighbors = 10)
+obj0 = scMultiIntegrate(obj0, eigens = 8, var.gene = var0, align = 'Predict', 
+                        npc = 20, add.Id = c("Set1", "Set2"), ncore = 2)
+obj0 = scUMAP(obj0, npc = 8, use = "PLS", dist = 0.001, neighbors = 15)
 DimPlot(obj0, slot = "cell.umap", colFactor = "Set", size = 2)
 DimPlot(obj0, slot = "cell.umap", colFactor = "Group", size = 2, label = TRUE)
 }

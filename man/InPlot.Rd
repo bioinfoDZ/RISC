@@ -10,6 +10,7 @@ InPlot(
   Colors = NULL,
   nPC = 20,
   neighbor = 30,
+  res = 1,
   method = "louvain",
   algorithm = "kd_tree",
   ncore = 1,
@@ -28,6 +29,8 @@ InPlot(
 \item{nPC}{The PCs will be calculated.}
 
 \item{neighbor}{The nearest neighbors.}
+
+\item{res}{The resolution of cluster searched for, works in "louvain" method.}
 
 \item{method}{The method of cell clustering for individual datasets.}
 

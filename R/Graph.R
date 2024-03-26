@@ -457,8 +457,8 @@ PCPlot <- function(object) {
 #' @param sample_bin The cell aggregating in samples, the default is FALSE.
 #' @param ann_col The annotation colors for colFactors, the input is a list.
 #' @param lim The gene expression range shown at heat-maps.
-#' @param smooth If use smooth to adjust heatmap, the default is "loess" and another
-#' choice is "smooth".
+#' @param smooth If use smooth to adjust heatmap, the default is "smooth" and another
+#' choice is "loess".
 #' @param span The loess span.
 #' @param degree The loess degree.
 #' @param palette The color palette used for heatmap. The default is 
@@ -467,6 +467,7 @@ PCPlot <- function(object) {
 #' @param con.bin Whether use consistent bin span.
 #' @param cell.lab.size The font size for column.
 #' @param gene.lab.size The font size for row.
+#' @param value_only Only return values.
 #' @importFrom pheatmap pheatmap
 #' @importFrom stats aggregate cutree smooth loess.smooth
 #' @references Kolde, R. (2015)
@@ -491,14 +492,16 @@ Heat <- function(
   sample_bin = FALSE, 
   ann_col = NULL, 
   lim = NULL, 
-  smooth = "loess", 
+  smooth = "smooth", 
   span = 0.75,
   degree = 1,
   palette = NULL, 
   num = 50, 
   con.bin = TRUE, 
   cell.lab.size = 10, 
-  gene.lab.size = 5
+  gene.lab.size = 5,
+  value_only = FALSE,
+  ...
   ) {
   
   if(length(colFactor) == 0 | length(genes) == 0){
@@ -654,22 +657,28 @@ Heat <- function(
   
   gene.cluster = as.integer(gene.cluster)
   
-  if(gene.cluster > 1){
-    
-    out = pheatmap(t(mat3), scale = 'none', useRaster = TRUE, cluster_cols = FALSE, cluster_rows = TRUE, treeheight_row = 0, treeheight_col = 0, show_rownames = gene.lab, show_colnames = FALSE, breaks = bks, color = cols, annotation_col = Group1, silent = TRUE)
-    gene.cluster = cutree(out$tree_row, k = gene.cluster)
-    gene.cluster0 = data.frame(Gene_K = as.factor(gene.cluster))
-    rownames(gene.cluster0) = names(gene.cluster)
-    
-    out0 = pheatmap(t(mat3), scale = 'none', useRaster = TRUE, cluster_cols = FALSE, cluster_rows = TRUE, treeheight_row = 0, treeheight_col = 0, show_rownames = gene.lab, show_colnames = FALSE, breaks = bks, color = cols, annotation_col = Group1, annotation_row = gene.cluster0, annotation_colors = ann_col0, border_color = NA, fontsize_row = gene.lab.size, fontsize_col = cell.lab.size)
-    
+  if(value_only){
+    return(mat3)
   } else {
     
-    out0 = pheatmap(t(mat3), scale = 'none', useRaster = TRUE, cluster_cols = FALSE, cluster_rows = FALSE, treeheight_row = 0, treeheight_col = 0, show_rownames = gene.lab, show_colnames = FALSE, breaks = bks, color = cols, annotation_col = Group1, annotation_colors = ann_col0, border_color = NA, fontsize_row = gene.lab.size, fontsize_col = cell.lab.size)
+    if(gene.cluster > 1){
+      
+      out = pheatmap(t(mat3), scale = 'none', useRaster = TRUE, cluster_cols = FALSE, cluster_rows = TRUE, treeheight_row = 0, treeheight_col = 0, show_rownames = gene.lab, show_colnames = FALSE, breaks = bks, color = cols, annotation_col = Group1, silent = TRUE)
+      gene.cluster = cutree(out$tree_row, k = gene.cluster)
+      gene.cluster0 = data.frame(Gene_K = as.factor(gene.cluster))
+      rownames(gene.cluster0) = names(gene.cluster)
+      
+      out0 = pheatmap(t(mat3), scale = 'none', useRaster = TRUE, cluster_cols = FALSE, cluster_rows = TRUE, treeheight_row = 0, treeheight_col = 0, show_rownames = gene.lab, show_colnames = FALSE, breaks = bks, color = cols, annotation_col = Group1, annotation_row = gene.cluster0, annotation_colors = ann_col0, border_color = NA, fontsize_row = gene.lab.size, fontsize_col = cell.lab.size,  ... = ...)
+      
+    } else {
+      
+      out0 = pheatmap(t(mat3), scale = 'none', useRaster = TRUE, cluster_cols = FALSE, cluster_rows = FALSE, treeheight_row = 0, treeheight_col = 0, show_rownames = gene.lab, show_colnames = FALSE, breaks = bks, color = cols, annotation_col = Group1, annotation_colors = ann_col0, border_color = NA, fontsize_row = gene.lab.size, fontsize_col = cell.lab.size, ... = ...)
+      
+    }
+    
+    return(out0)
     
   }
-  
-  return(out0)
   
 }
 

@@ -49,7 +49,7 @@ obj1 = raw.mat[[3]]
 obj2 = raw.mat[[4]]
 obj0 = list(obj1, obj2)
 var0 = intersect(obj1@vargene, obj2@vargene)
-PLS0 = scPLS(obj0, var.gene = var0, npc = 10, add.Id = c("Set1", "Set2"), ncore = 1)
+PLS0 = scPLS(obj0, var.gene = var0, npc = 20, add.Id = c("Set1", "Set2"), ncore = 1)
 }
 \references{
 Liu et al., Nature Biotech. (2021)

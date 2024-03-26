@@ -113,7 +113,7 @@ test_that("Integrate datasets", {
 context("Cell clustering")
 
 idat = scUMAP(idat, npc = 5, use = 'PLS')
-idat = scCluster(idat, k = 4, method = 'density', dc = 0.3253)
+idat = scCluster(idat, slot = 'cell.umap', k = 4, method = 'density', dc = 0.3253)
 
 test_that("Integrate datasets", {
   expect_false(is.null(idat@DimReduction$cell.umap))

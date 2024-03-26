@@ -14,10 +14,7 @@ scMarker(
   latent.factor = NULL,
   method = "QP",
   min.cells = 10,
-  ncore = 1,
-  fast = FALSE,
-  bin_bg = 500,
-  bin_cl = 100
+  ncore = 1
 )
 }
 \arguments{
@@ -27,8 +24,8 @@ scMarker(
 
 \item{positive}{Whether only output the cluster markers with positive log2FC.}
 
-\item{frac}{A fraction cutoff, the cluster marekr genes expressed at least a 
-cutoff fraction of the cluster cells.}
+\item{frac}{A fraction cutoff, the marker genes expressed at least a 
+cutoff fraction of all the cells.}
 
 \item{log2FC}{The cutoff of log2 Fold-change for differentially expressed marker 
 genes.}
@@ -45,12 +42,6 @@ Rank Sum and Signed Rank model.}
 \item{min.cells}{The minimum cells for each cluster to calculate marker genes.}
 
 \item{ncore}{The multiple cores for parallel calculating.}
-
-\item{fast}{In the fast way, making cell bins to calculate marker genes.}
-
-\item{bin_bg}{When run fast, how many cell bins will use in background cells.}
-
-\item{bin_cl}{When run fast, how many cell bins will use in cluster cells.}
 }
 \description{
 This is the basic function in RISC, it can identify the cluster markers by

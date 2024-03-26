@@ -30,7 +30,8 @@ scPCA <- function(object, npc = 20){
     
     count = object@assay$logcount
     var = count[object@vargene,]
-    varpc = irlba(var, nv = npc, center = TRUE)
+    var = scale(var, center = TRUE, scale = TRUE)
+    varpc = irlba(var, nv = npc)
     cell.pca = as.matrix(varpc$v)
     gene.pca = as.matrix(varpc$u)
     var.pca = varpc$d^2 / sum(varpc$d^2)
@@ -86,7 +87,8 @@ scUMAP <- function(
   use = 'PCA', 
   neighbors = 15, 
   dist = 0.1, 
-  seed = 123
+  seed = 123,
+  ...
   ) {
   
   if(use == 'PCA'){
@@ -131,7 +133,7 @@ scUMAP <- function(
   embedding = as.integer(embedding)
   neighbor0 = as.integer(neighbors)
   dist0 = as.numeric(dist)
-  umap0 = umap(as.matrix(cell.pc), method = 'naive', n_components = embedding, min_dist = dist0, n_neighbors = neighbor0)
+  umap0 = umap(as.matrix(cell.pc), method = 'naive', n_components = embedding, min_dist = dist0, n_neighbors = neighbor0, ... = ...)
   cell.umap = as.matrix(umap0$layout)
   rownames(cell.umap) = rownames(cell.pc)
   colnames(cell.umap) = paste0('UMAP', 1L:embedding)
@@ -175,7 +177,15 @@ scUMAP <- function(
 #' obj0 = scTSNE(obj0, npc = 4, perplexity = 10)
 #' DimPlot(obj0, slot = "cell.tsne", colFactor = 'Group', size = 2)
 
-scTSNE <- function(object, npc = 20, embedding = 2, use = 'PCA', perplexity = 30, seed = 123) {
+scTSNE <- function(
+    object, 
+    npc = 20,
+    embedding = 2,
+    use = 'PCA',
+    perplexity = 30,
+    seed = 123,
+    ...
+    ) {
   
   npc = as.integer(npc)
   perplexity = as.integer(perplexity)
@@ -220,7 +230,7 @@ scTSNE <- function(object, npc = 20, embedding = 2, use = 'PCA', perplexity = 30
   
   set.seed(as.numeric(seed))
   embedding = as.integer(embedding)
-  tsne0 = Rtsne(as.matrix(cell.pc), dims = embedding, pca = pca0, pca_center = pca_center0, pca_scale = pca_scale0, perplexity = perplexity)
+  tsne0 = Rtsne(as.matrix(cell.pc), dims = embedding, pca = pca0, pca_center = pca_center0, pca_scale = pca_scale0, perplexity = perplexity, ... = ...)
   cell.tsne = as.matrix(tsne0$Y)
   rownames(cell.tsne) = rownames(cell.pc)
   colnames(cell.tsne) = paste0('tSNE', 1L:embedding)

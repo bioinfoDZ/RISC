@@ -21,6 +21,7 @@
 #' "kd_tree", "cover_tree", "CR", "brute".
 #' @param npc The number of PCA or PLS used for cell clustering.
 #' @param k The number of cluster searched for, works in "density" method.
+#' @param res The resolution of cluster searched for, works in "louvain" method.
 #' @param dc The distance used to generate random center points which affect 
 #' clusters. If have no idea about this, do not input anything. Keep it as the 
 #' default value for most users. Work for "density" method.
@@ -30,7 +31,7 @@
 #' @name scCluster
 #' @importFrom densityClust densityClust findClusters
 #' @importFrom FNN get.knn
-#' @importFrom igraph simplify graph_from_data_frame cluster_louvain
+#' @importFrom igraph simplify graph_from_data_frame cluster_louvain E E<-
 #' @references Blondel et al., JSTAT (2008)
 #' @references Rodriguez et al., Sicence (2014)
 #' @export
@@ -44,12 +45,13 @@
 
 scCluster <- function(
   object, 
-  slot = "cell.umap", 
+  slot = "cell.pca", 
   neighbor = 10, 
   algorithm = "kd_tree", 
   method = 'louvain', 
   npc = 20, 
   k = 10, 
+  res = 0.5, 
   dc = NULL, 
   redo = TRUE, 
   random.seed = 123
@@ -57,6 +59,7 @@ scCluster <- function(
   
   set.seed(random.seed)
   k = as.integer(k)
+  res = as.numeric(res)
   neighbor = as.integer(neighbor)
   algorithm = as.character(algorithm)
   npc = as.integer(npc)
@@ -112,8 +115,9 @@ scCluster <- function(
       clust0 = get.knn(count, k = neighbor, algorithm = algorithm)
       clust1 = data.frame(NodStar = rep(1L:nrow(count), neighbor), NodEnd = as.vector(clust0$nn.index), stringsAsFactors = FALSE)
       clust1 = graph_from_data_frame(clust1, directed = FALSE)
+      E(clust1)$weight = 1/(1 + as.vector(clust0$nn.dist))
       clust1 = simplify(clust1)
-      clust1 = cluster_louvain(clust1, weights = 1/(1 + as.vector(clust0$nn.dist)))
+      clust1 = cluster_louvain(clust1, resolution = res)
       object@cluster = object@coldata$Cluster = as.factor(clust1$membership)
       names(object@cluster) = names(object@coldata$Cluster) = rownames(count)
       object@metadata[['clustering']] = data.frame(Method = 'louvain', PCs = npc, Neighbors = neighbor, stringsAsFactors = F)

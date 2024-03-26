@@ -10,7 +10,8 @@ scTSNE(
   embedding = 2,
   use = "PCA",
   perplexity = 30,
-  seed = 123
+  seed = 123,
+  ...
 )
 }
 \arguments{

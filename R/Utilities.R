@@ -39,11 +39,13 @@ SubSet <- function(object, cells = NULL, genes = NULL){
       name0 = 'logcount'
       raw.assay = raw.assay$logcount
       raw.assay = lapply(raw.assay, FUN = function(y){y[, colnames(y) %in% rownames(coldata0), drop = F]})
+      raw.assay[sapply(raw.assay, function(x){dim(x)[2] == 0})] = NULL
       rowsum0 = lapply(raw.assay, FUN = function(y){Matrix::rowSums(y > 0)})
       rowsum0 = do.call(cbind, rowsum0)
       keep = Matrix::rowSums(rowsum0) > 0
       gene0 = rownames(object@rowdata)[keep]
       raw.assay = lapply(raw.assay, FUN = function(y){y[gene0, , drop = FALSE]})
+      raw.assay[sapply(raw.assay, function(x){dim(x)[1] == 0})] = NULL
       
     } else {
       
@@ -91,6 +93,8 @@ SubSet <- function(object, cells = NULL, genes = NULL){
       name0 = 'logcount'
       raw.assay = raw.assay$logcount
       raw.assay = lapply(raw.assay, FUN = function(y){y[gene0, colnames(y) %in% rownames(coldata0), drop = FALSE]})
+      raw.assay[sapply(raw.assay, function(x){dim(x)[1] == 0})] = NULL
+      raw.assay[sapply(raw.assay, function(x){dim(x)[2] == 0})] = NULL
       
     } else {
       
@@ -132,6 +136,7 @@ SubSet <- function(object, cells = NULL, genes = NULL){
       name0 = 'logcount'
       raw.assay = raw.assay$logcount
       raw.assay = lapply(raw.assay, FUN = function(y){y[gene0, , drop = FALSE]})
+      raw.assay[sapply(raw.assay, function(x){dim(x)[1] == 0})] = NULL
       
     } else {
       

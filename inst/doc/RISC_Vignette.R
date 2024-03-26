@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -63,7 +63,7 @@ sce6 = process0(sce6)
 set.seed(1)
 var.genes = rownames(sce1@assay$count)
 pcr0 = list(sce1, sce2, sce3, sce4, sce5, sce6)
-pcr0 = scMultiIntegrate(pcr0, eigens = 9, var.gene = var.genes, align = 'OLS', npc = 12)
+pcr0 = scMultiIntegrate(pcr0, eigens = 9, var.gene = var.genes, align = 'OLS', npc = 15)
 # pcr0 = scLargeIntegrate(pcr0, var.gene = var.genes, align = 'Predict', npc = 8)
 pcr0 =scUMAP(pcr0, npc = 9, use = 'PLS', dist = 0.001, neighbors = 15)
 
@@ -72,10 +72,10 @@ pcr0@coldata$Group = factor(pcr0@coldata$Group0, levels = c('Group1', 'Group2', 
 pcr0@coldata$Set0 = factor(pcr0@coldata$Set, levels = c('Set1', 'Set2', 'Set3', 'Set4', 'Set5', 'Set6'), labels = c('Set1 rep.1', 'Set2 rep.1', 'Set3 rep.1', 'Set1 rep.2', 'Set2 rep.2', 'Set3 rep.2'))
 pcr0 = scCluster(pcr0, slot = "cell.umap", k = 4, method = "density", dc = 0.3)
 
-## ---- fig.show="hold", out.width="48", fig.dim=c(7, 5)------------------------
+## ----fig.show="hold", out.width="48", fig.dim=c(7, 5)-------------------------
 DimPlot(pcr0, colFactor = 'Set0', size = 2)
 DimPlot(pcr0, colFactor = 'Group', size = 2, Colors = brewer.pal(5, "Set1"))
-DimPlot(pcr0, colFactor = 'Cluster', size = 2, Colors = brewer.pal(4, "Dark2"))
+DimPlot(pcr0, colFactor = 'Cluster', size = 2, Colors = brewer.pal(6, "Dark2"))
 
 ## -----------------------------------------------------------------------------
 sessionInfo()

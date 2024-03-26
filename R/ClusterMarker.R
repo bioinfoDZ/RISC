@@ -15,8 +15,8 @@
 #' @param object RISC object: a framework dataset.
 #' @param cluster Select the cluster that we want to detect cluster marker genes.
 #' @param positive Whether only output the cluster markers with positive log2FC.
-#' @param frac A fraction cutoff, the cluster marekr genes expressed at least a 
-#' cutoff fraction of the cluster cells.
+#' @param frac A fraction cutoff, the marker genes expressed at least a 
+#' cutoff fraction of all the cells.
 #' @param log2FC The cutoff of log2 Fold-change for differentially expressed marker 
 #' genes.
 #' @param Padj The cutoff of the adjusted P-value.
@@ -27,10 +27,6 @@
 #' Rank Sum and Signed Rank model.
 #' @param min.cells The minimum cells for each cluster to calculate marker genes.
 #' @param ncore The multiple cores for parallel calculating.
-#' @param fast In the fast way, making cell bins to calculate marker genes.
-#' @param bin_bg When run fast, how many cell bins will use in background cells.
-#' @param bin_cl When run fast, how many cell bins will use in cluster cells.
-#' @importFrom Matrix.utils aggregate.Matrix
 #' @importFrom MASS glm.nb
 #' @importFrom stats var wilcox.test
 #' @references Paternoster et al., Criminology (1997)
@@ -57,10 +53,7 @@ scMarker <- function(
   latent.factor = NULL, 
   method = 'QP', 
   min.cells = 10, 
-  ncore = 1, 
-  fast = FALSE, 
-  bin_bg = 500, 
-  bin_cl = 100
+  ncore = 1
   ) {
   
   pboptions(type = "txt", style = 3)
@@ -72,8 +65,6 @@ scMarker <- function(
   Padj = as.numeric(Padj)
   log2FC = as.numeric(log2FC)
   min.cells = as.integer(min.cells)
-  bin_bg = as.integer(bin_bg)
-  bin_cl = as.integer(bin_cl)
   
   cell1 = rownames(coldata)[coldata$Cluster %in% cluster]
   cell2 = rownames(coldata)[!coldata$Cluster %in% cluster]
@@ -90,96 +81,59 @@ scMarker <- function(
     
     coldata$Set = factor(coldata$Set)
     set0 = levels(coldata$Set)
-    rowsum0 = lapply(count, FUN = function(y){Matrix::rowSums(y[, colnames(y) %in% cell1, drop = FALSE] > 0)})
-    rowsum0 = do.call(cbind, rowsum0)
-    percent0 = round(Matrix::rowSums(rowsum0) / length(cell1), digits = 2)
-    keep = Matrix::rowSums(rowsum0) > floor(length(cell1) * frac)
+    rowsum1 = lapply(count, FUN = function(y){Matrix::rowSums(y[, colnames(y) %in% cell1, drop = FALSE] > 0)})
+    rowsum1 = do.call(cbind, rowsum1)
+    rowsum2 = lapply(count, FUN = function(y){Matrix::rowSums(y[, colnames(y) %in% cell2, drop = FALSE] > 0)})
+    rowsum2 = do.call(cbind, rowsum2)
+    rowsum1 = Matrix::rowSums(rowsum1)
+    rowsum2 = Matrix::rowSums(rowsum2)
+    percent0 = (rowsum1 + rowsum2) / dim(coldata)[1]
+    percent1 = rowsum1 / length(cell1)
+    percent2 = rowsum2 / length(cell2)
+    keep = (rowsum1 + rowsum2) > floor(dim(coldata)[1] * frac)
     gene0 = rownames(object@rowdata)[keep]
     percent0 = percent0[keep]
+    percent1 = percent1[keep]
+    percent2 = percent2[keep]
     count = lapply(count, FUN = function(y){y[gene0, , drop = FALSE]})
     
     cell1 = data.frame(id = cell1, seq = 1L:length(cell1))
     rownames(cell1) = cell1$id
     cell1$set = as.character(coldata[rownames(cell1), "Set"])
-    set_bin = data.frame(table(cell1$set))
-    colnames(set_bin) = c("Label", "Value")
-    set_bin$Label = as.character(set_bin$Label)
-    set_bin$Value = as.integer(set_bin$Value)
-    set_bin = set_bin[set_bin$Value != 0,]
+    set_bin1 = data.frame(table(cell1$set))
+    colnames(set_bin1) = c("Label", "Value")
+    set_bin1$Label = as.character(set_bin1$Label)
+    set_bin1$Value = as.integer(set_bin1$Value)
+    set_bin1 = set_bin1[set_bin1$Value != 0,]
     
-    ave0 = lapply(1L:nrow(set_bin), FUN = function(i){spr_count(count0 = count, i = i, id0 = set_bin$Label, cell0 = cell1$id)})
-    ave0 = lapply(ave0, FUN = function(y){Matrix::rowMeans(y) * ncol(y)})
-    ave0 = do.call(cbind, ave0)
-    ave0 = Matrix::rowSums(ave0) / nrow(cell1)
+    ave1 = lapply(1L:nrow(set_bin1), FUN = function(i){spr_count(count0 = count, i = i, id0 = set_bin1$Label, cell0 = cell1$id)})
+    ave1[sapply(ave1, function(x){dim(x)[2] == 0})] = NULL
+    ave1 = lapply(ave1, FUN = function(y){Matrix::rowMeans(y) * ncol(y)})
+    ave1 = do.call(cbind, ave1)
+    ave1 = Matrix::rowSums(ave1) / nrow(cell1)
     
-    if(fast & length(cell2) > bin_bg){
-      
-      if(nrow(cell1) <= bin_cl){
-        
-        count1 = lapply(1L:nrow(set_bin), FUN = function(i){spr_count(count0 = count, i = i, id0 = set_bin$Label, cell0 = cell1$id)})
-        count1 = do.call(cbind, count1)
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-        
-      } else {
-        
-        bin1 = lapply(1L:nrow(set_bin), FUN = function(i){spr_bin(cell0 = cell1, id0 = set_bin, i = i, bins = bin_cl)})
-        names(bin1) = set_bin$Label
-        count1 = lapply(1L:nrow(set_bin), FUN = function(i){aggregate.Matrix(x = Matrix::t(spr_count(count0 = count, i = i, id0 = set_bin$Label, cell0 = cell1$id)), groupings = bin1[[i]], fun = "mean")})
-        names(count1) = set_bin$Label
-        count1 = lapply(count1, FUN = function(x){spr_na_t(x)})
-        count1 = do.call(cbind, count1)
-        rownames(count1) = gene0
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-        
-      }
-      
-      cell2 = data.frame(id = cell2, seq = 1L:length(cell2))
-      rownames(cell2) = cell2$id
-      cell2$set = as.character(coldata[rownames(cell2), "Set"])
-      set_bin = data.frame(table(cell2$set))
-      colnames(set_bin) = c("Label", "Value")
-      set_bin$Label = as.character(set_bin$Label)
-      set_bin$Value = as.integer(set_bin$Value)
-      set_bin = set_bin[set_bin$Value != 0,]
-      
-      bin2 = lapply(1L:nrow(set_bin), FUN = function(i){spr_bin(cell0 = cell2, id0 = set_bin, i = i, bins = bin_bg)})
-      names(bin2) = set_bin$Label
-      count2 = lapply(1L:nrow(set_bin), FUN = function(i){aggregate.Matrix(x = Matrix::t(spr_count(count0 = count, i = i, id0 = set_bin$Label, cell0 = cell2$id)), groupings = bin2[[i]], fun = "mean")})
-      names(count2) = set_bin$Label
-      count2 = lapply(count2, FUN = function(x){spr_na_t(x)})
-      count2 = do.call(cbind, count2)
-      rownames(count2) = gene0
-      colnames(count2) = cell2 = paste0("ctrl_", 1L:ncol(count2))
-      
-      count = cbind(count2, count1)
-      group1 = rep('sam', length(cell1))
-      group2 = rep('ctrl', length(cell2))
-      group = factor(c(group2, group1), levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      latent.factor0 = NULL
-      
-    } else {
-      
-      group = rep('ctrl', nrow(coldata))
-      group[rownames(coldata) %in% rownames(cell1)] = 'sam'
-      group = factor(group, levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      fast = FALSE
-      
-    }
+    cell2 = data.frame(id = cell2, seq = 1L:length(cell2))
+    rownames(cell2) = cell2$id
+    cell2$set = as.character(coldata[rownames(cell2), "Set"])
+    set_bin2 = data.frame(table(cell2$set))
+    colnames(set_bin2) = c("Label", "Value")
+    set_bin2$Label = as.character(set_bin2$Label)
+    set_bin2$Value = as.integer(set_bin2$Value)
+    set_bin2 = set_bin2[set_bin2$Value != 0,]
+    
+    ave2 = lapply(1L:nrow(set_bin2), FUN = function(i){spr_count(count0 = count, i = i, id0 = set_bin2$Label, cell0 = cell2$id)})
+    ave2[sapply(ave2, function(x){dim(x)[2] == 0})] = NULL
+    ave2 = lapply(ave2, FUN = function(y){Matrix::rowMeans(y) * ncol(y)})
+    ave2 = do.call(cbind, ave2)
+    ave2 = Matrix::rowSums(ave2) / nrow(cell2)
+    
+    group = rep('ctrl', nrow(coldata))
+    group[rownames(coldata) %in% rownames(cell1)] = 'sam'
+    group = factor(group, levels = c('ctrl', 'sam'))
+    group = as.integer(group)
     
     if(length(coldata$Cluster) == 0){
       stop('Please cluster cells first.')
-    } else if(length(latent.factor0) == 0 & fast) {
-      
-      if(method == 'NB'){
-        result = pblapply(1L:length(gene0), FUN = function(x){NB.detect(group, count[x,])}, cl = ncore)
-      } else if(method == 'QP') {
-        result = pblapply(1L:length(gene0), FUN = function(x){QP.detect(group, count[x,])}, cl = ncore)
-      } else {
-        result = pblapply(1L:length(gene0), FUN = function(x){wil.detect(group, count[x,])}, cl = ncore)
-      }
-      
     } else if(length(latent.factor0) == 0){
       
       if(method == 'NB'){
@@ -206,57 +160,24 @@ scMarker <- function(
     
   } else {
     
-    rowsum0 = Matrix::rowSums(count[, colnames(count) %in% cell1, drop = FALSE] > 0)
-    percent0 = round(rowsum0 / length(cell1), digits = 2)
-    keep = rowsum0 > floor(length(cell1) * frac)
+    rowsum1 = Matrix::rowSums(count[, colnames(count) %in% cell1, drop = FALSE] > 0)
+    rowsum2 = Matrix::rowSums(count[, colnames(count) %in% cell2, drop = FALSE] > 0)
+    percent0 = (rowsum1 + rowsum2) / dim(coldata)[1]
+    percent1 = rowsum1 / length(cell1)
+    percent2 = rowsum2 / length(cell2)
+    keep = (rowsum1 + rowsum2) > floor(dim(coldata)[1] * frac)
     percent0 = percent0[keep]
+    percent1 = percent1[keep]
+    percent2 = percent2[keep]
     count = count[keep, , drop = FALSE]
     gene0 = rownames(object@rowdata)[keep]
-    ave0 = Matrix::rowMeans(count[, colnames(count) %in% cell1, drop = FALSE])
+    ave1 = Matrix::rowMeans(count[, colnames(count) %in% cell1, drop = FALSE])
+    ave2 = Matrix::rowMeans(count[, colnames(count) %in% cell2, drop = FALSE])
     
-    if(fast & length(cell2) > bin_bg){
-      
-      cell1 = data.frame(id = cell1, seq = 1L:length(cell1))
-      rownames(cell1) = cell1$id
-      
-      if(nrow(cell1) <= bin_cl){
-        count1 = count[, colnames(count) %in% cell1$id, drop = FALSE]
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-      } else {
-        bin1 = cut(cell1$seq, breaks = bin_cl, labels = FALSE)
-        cell1$bin = as.factor(bin1)
-        count1 = aggregate.Matrix(x = Matrix::t(count[, colnames(count) %in% cell1$id, drop = FALSE]), groupings = cell1$bin, fun = "mean")
-        count1 = Matrix::t(count1)
-        rownames(count1) = rownames(count)
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-      }
-      
-      cell2 = data.frame(id = cell2, seq = 1L:length(cell2))
-      rownames(cell2) = cell2$id
-      
-      bin2 = cut(cell2$seq, breaks = bin_bg, labels = FALSE)
-      cell2$bin = as.factor(bin2)
-      count2 = aggregate.Matrix(x = Matrix::t(count[, colnames(count) %in% cell2$id, drop = FALSE]), groupings = cell2$bin, fun = "mean")
-      count2 = Matrix::t(count2)
-      rownames(count2) = rownames(count)
-      colnames(count2) = cell2 = paste0("ctrl_", 1L:ncol(count2))
-      
-      count = cbind(count2, count1)
-      group1 = rep('sam', length(cell1))
-      group2 = rep('ctrl', length(cell2))
-      group = factor(c(group2, group1), levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      latent.factor0 = NULL
-      
-    } else {
-      
-      group = rep('ctrl', nrow(coldata))
-      group[rownames(coldata) %in% cell1] = 'sam'
-      group = factor(group, levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      fast = FALSE
-      
-    }
+    group = rep('ctrl', nrow(coldata))
+    group[rownames(coldata) %in% cell1] = 'sam'
+    group = factor(group, levels = c('ctrl', 'sam'))
+    group = as.integer(group)
     
     if(length(coldata$Cluster) == 0){
       stop('Please cluster cells first.')
@@ -290,19 +211,15 @@ scMarker <- function(
   result = as.matrix(result)
   
   colnames(result) = c('log2FC', 'Pvalue')
-  result = data.frame(Symbol = gene0, Percent = percent0, logAve = ave0, result)
+  result = data.frame(Symbol = gene0, Percent = percent0, Pct.Cluster = percent1, Pct.Rest = percent2, avelog.Cluster = ave1, avelog.Rest = ave2, result)
   result$Padj = p.adjust(result$Pvalue, method = 'BH')
   result = result[order(result$Pvalue, decreasing = FALSE),]
   # result$logAve = sapply(result$logAve, FUN = function(x){log1p_2(x)})
   
-  if(is.null(Padj)){
-    result0 = result[result$Pvalue < 0.05,]
+  if(Padj == 1) {
+    result0 = result
   } else {
-    if(Padj == 1) {
-      result0 = result
-    } else {
-      result0 = result[result$Padj < Padj,]
-    }
+    result0 = result[result$Padj < Padj,]
   }
   
   if(positive) {
@@ -310,6 +227,10 @@ scMarker <- function(
   } else {
     result0 = result0[abs(result0$log2FC) > log2FC,]
   }
+  
+  result0$Percent = format(x = round(x = as.numeric(result0$Percent), digits = 3), nsmall = 3)
+  result0$Pct.Cluster = format(round(x = as.numeric(result0$Pct.Cluster), digits = 3), nsmall = 3)
+  result0$Pct.Rest = format(round(x = as.numeric(result0$Pct.Rest), digits = 3), nsmall = 3)
   
   return(result0)
   
@@ -332,8 +253,8 @@ scMarker <- function(
 #' @rdname All-Cluster-Marker
 #' @param object RISC object: a framework dataset.
 #' @param positive Whether only output the cluster markers with positive log2FC.
-#' @param frac A fraction cutoff, the cluster marker genes expressed at least a 
-#' cutoff fraction of the cluster cells.
+#' @param frac A fraction cutoff, the marker genes expressed at least a 
+#' cutoff fraction of all the cells.
 #' @param log2FC The cutoff of log2 Fold-change for differentially expressed marker 
 #' genes.
 #' @param Padj The cutoff of the adjusted P-value.
@@ -344,9 +265,6 @@ scMarker <- function(
 #' for Negative Binomial model, 'QP' for QuasiPoisson model, and 'Wilcox' for Wilcoxon 
 #' Rank Sum and Signed Rank model.
 #' @param ncore The multiple cores for parallel calculating.
-#' @param fast In the fast way, making cell bins to calculate marker genes.
-#' @param bin_bg When run fast, how many cell bins will use in background cells.
-#' @param bin_cl When run fast, how many cell bins will use in cluster cells.
 #' @importFrom MASS glm.nb
 #' @name AllMarker
 #' @export
@@ -360,10 +278,7 @@ AllMarker <- function(
   latent.factor = NULL, 
   min.cells = 25L, 
   method = 'QP', 
-  ncore = 1, 
-  fast = FALSE, 
-  bin_bg = 500, 
-  bin_cl = 100
+  ncore = 1
   ) {
   
   if(length(object@cluster) == 0) {
@@ -378,25 +293,9 @@ AllMarker <- function(
     cluster0 = data.frame(table(coldata$Cluster))
     colnames(cluster0) = c('Cluster', 'No')
     
-    if(length(bin_bg) == nrow(cluster0)){
-      bin_bg = as.integer(bin_bg)
-    } else {
-      bin_bg = rep(bin_bg[1], nrow(cluster0))
-    }
-    
-    if(length(bin_cl) == nrow(cluster0)){
-      bin_cl = as.integer(bin_cl)
-    } else {
-      bin_cl = rep(bin_cl[1], nrow(cluster0))
-    }
-    
     keep = (cluster0$No >= min.cells)
-    bin_bg = bin_bg[keep]
-    bin_cl = bin_cl[keep]
     cluster0 = cluster0[keep,]
-    result = data.frame(Symbol = 'Gene', Percent = 0, logAve = 0, log2FC = 0, Pvalue = 1, Padj = 1, Cluster = 0)
-    
-    if(length(bin_bg) == nrow(cluster0))
+    result = data.frame(Symbol = 'Gene', Percent = 0.0, Pct.Cluster = 0.0, Pct.Rest = 0.0, avelog.Cluster = 0.0, avelog.Rest = 0.0, log2FC = 0.0, Pvalue = 1.0, Padj = 1.0, Cluster = -1)
     
     i = 1L
     while(i <= nrow(cluster0)) {
@@ -412,7 +311,7 @@ AllMarker <- function(
         
       } else {
         
-        resulti = scMarker(object = object, cluster = clusteri, positive = positive, frac = frac, log2FC = log2FC, Padj = Padj, latent.factor = latent.factor, method = method, ncore = ncore, min.cells = min.cells, fast = fast, bin_bg = bin_bg[i], bin_cl = bin_cl[i])
+        resulti = scMarker(object = object, cluster = clusteri, positive = positive, frac = frac, log2FC = log2FC, Padj = Padj, latent.factor = latent.factor, method = method, ncore = ncore, min.cells = min.cells)
         
         if(nrow(resulti) > 0) {
           resulti$Cluster = clusteri
@@ -470,9 +369,6 @@ AllMarker <- function(
 #' Wilcoxon Rank-Sum model.
 #' @param min.cells The minimum cells for each cluster to calculate marker genes.
 #' @param ncore The multiple cores for parallel calculating.
-#' @param fast In the fast way, making cell bins to calculate marker genes.
-#' @param bin_ctrl When run fast, how many cell bins will use in control cells.
-#' @param bin_sam When run fast, how many cell bins will use in sample cells.
 #' @references Paternoster et al., Criminology (1997)
 #' @references Berk et al., Journal of Quantitative Criminology (2008)
 #' @references Liu et al., Nature Biotech. (2021)
@@ -494,16 +390,13 @@ scDEG <- function(
   object, 
   cell.ctrl = NULL, 
   cell.sam = NULL, 
-  frac = 0.10, 
-  log2FC = 1, 
+  frac = 0.1, 
+  log2FC = 0.5, 
   Padj = 0.01, 
   latent.factor = NULL, 
   method = 'NB', 
   min.cells = 10, 
-  ncore = 1, 
-  fast = FALSE, 
-  bin_ctrl = 500, 
-  bin_sam = 100
+  ncore = 1
   ) {
   
   pboptions(type = "txt", style = 3)
@@ -516,8 +409,6 @@ scDEG <- function(
   min.cells = as.numeric(min.cells)
   cell.ctrl = intersect(cell.ctrl, rownames(coldata))
   cell.sam = intersect(cell.sam, rownames(coldata))
-  bin_ctrl = as.integer(bin_ctrl)
-  bin_sam = as.integer(bin_sam)
   
   if(length(cell.ctrl) < min.cells | length(cell.sam) < min.cells){
     stop("The number of cells in either control or sample is too low")
@@ -546,12 +437,20 @@ scDEG <- function(
   if(Inte){
     
     count = lapply(count, FUN = function(y){y[, colnames(y) %in% unique(c(cell1, cell2)), drop = FALSE]})
-    rowsum0 = lapply(count, FUN = function(y){Matrix::rowSums(y > 0)})
-    rowsum0 = do.call(cbind, rowsum0)
-    percent0 = round(Matrix::rowSums(rowsum0) / (length(cell1) + length(cell2)), digits = 2)
-    keep = Matrix::rowSums(rowsum0) > floor(min(length(cell1), length(cell2)) * frac)
-    percent0 = percent0[keep]
+    rowsum1 = lapply(count, FUN = function(y){Matrix::rowSums(y[, colnames(y) %in% cell1, drop = FALSE] > 0)})
+    rowsum1 = do.call(cbind, rowsum1)
+    rowsum2 = lapply(count, FUN = function(y){Matrix::rowSums(y[, colnames(y) %in% cell2, drop = FALSE] > 0)})
+    rowsum2 = do.call(cbind, rowsum2)
+    rowsum1 = Matrix::rowSums(rowsum1)
+    rowsum2 = Matrix::rowSums(rowsum2)
+    percent0 = (rowsum1 + rowsum2) / (length(cell1) + length(cell2))
+    percent1 = rowsum1 / length(cell1)
+    percent2 = rowsum2 / length(cell2)
+    keep = (rowsum1 + rowsum2) > floor((length(cell1) + length(cell2)) * frac)
     gene0 = rownames(object@rowdata)[keep]
+    percent0 = percent0[keep]
+    percent1 = percent1[keep]
+    percent2 = percent2[keep]
     count = lapply(count, FUN = function(y){y[gene0, , drop = FALSE]})
     
     cell1 = data.frame(id = cell1, seq = 1L:length(cell1))
@@ -564,6 +463,7 @@ scDEG <- function(
     set_bin1 = set_bin1[set_bin1$Value != 0,]
     
     ave1 = lapply(1L:nrow(set_bin1), FUN = function(i){spr_count(count0 = count, i = i, id0 = set_bin1$Label, cell0 = cell1$id)})
+    ave1[sapply(ave1, function(x){dim(x)[2] == 0})] = NULL
     ave1 = lapply(ave1, FUN = function(y){Matrix::rowMeans(y) * ncol(y)})
     ave1 = do.call(cbind, ave1)
     ave1 = Matrix::rowSums(ave1) / nrow(cell1)
@@ -578,69 +478,18 @@ scDEG <- function(
     set_bin2 = set_bin2[set_bin2$Value != 0,]
     
     ave2 = lapply(1L:nrow(set_bin2), FUN = function(i){spr_count(count0 = count, i = i, id0 = set_bin2$Label, cell0 = cell2$id)})
+    ave2[sapply(ave2, function(x){dim(x)[2] == 0})] = NULL
     ave2 = lapply(ave2, FUN = function(y){Matrix::rowMeans(y) * ncol(y)})
     ave2 = do.call(cbind, ave2)
     ave2 = Matrix::rowSums(ave2) / nrow(cell2)
+
+    group = rep('ctrl', nrow(coldata))
+    group[rownames(coldata) %in% rownames(cell1)] = 'sam'
+    group = factor(group, levels = c('ctrl', 'sam'))
+    group = as.integer(group)
     
-    if(fast & length(cell2) > bin_ctrl){
-      
-      if(length(cell1) <= bin_sam){
-        
-        count1 = lapply(1L:nrow(set_bin1), FUN = function(i){spr_count(count0 = count, i = i, id0 = set_bin1$Label, cell0 = cell1$id)})
-        count1 = do.call(cbind, count1)
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-        
-      } else {
-        
-        bin1 = lapply(1L:nrow(set_bin1), FUN = function(i){spr_bin(cell0 = cell1, id0 = set_bin1, i = i, bins = bin_sam)})
-        names(bin1) = set_bin1$Label
-        count1 = lapply(1L:nrow(set_bin1), FUN = function(i){aggregate.Matrix(x = Matrix::t(spr_count(count0 = count, i = i, id0 = set_bin1$Label, cell0 = cell1$id)), groupings = bin1[[i]], fun = "mean")})
-        names(count1) = set_bin1$Label
-        count1 = lapply(count1, FUN = function(x){spr_na_t(x)})
-        count1 = do.call(cbind, count1)
-        rownames(count1) = gene0
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-        
-      }
-      
-      bin2 = lapply(1L:nrow(set_bin2), FUN = function(i){spr_bin(cell0 = cell2, id0 = set_bin2, i = i, bins = bin_ctrl)})
-      names(bin2) = set_bin2$Label
-      count2 = lapply(1L:nrow(set_bin2), FUN = function(i){aggregate.Matrix(x = Matrix::t(spr_count(count0 = count, i = i, id0 = set_bin2$Label, cell0 = cell2$id)), groupings = bin2[[i]], fun = "mean")})
-      names(count2) = set_bin2$Label
-      count2 = lapply(count2, FUN = function(x){spr_na_t(x)})
-      count2 = do.call(cbind, count2)
-      rownames(count2) = gene0
-      colnames(count2) = cell2 = paste0("ctrl_", 1L:ncol(count2))
-      
-      count = cbind(count2, count1)
-      group1 = rep('sam', length(cell1))
-      group2 = rep('ctrl', length(cell2))
-      group = factor(c(group2, group1), levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      latent.factor0 = NULL
-      
-    } else {
-      
-      group = rep('ctrl', nrow(coldata))
-      group[rownames(coldata) %in% rownames(cell1)] = 'sam'
-      group = factor(group, levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      fast = FALSE
-      
-    }
-    
-    if(length(latent.factor0) == 0 & fast) {
-      
-      if(method == 'NB'){
-        result = pblapply(1L:length(gene0), FUN = function(x){NB.detect(group, count[x,])}, cl = ncore)
-      } else if(method == 'QP') {
-        result = pblapply(1L:length(gene0), FUN = function(x){QP.detect(group, count[x,])}, cl = ncore)
-      } else {
-        result = pblapply(1L:length(gene0), FUN = function(x){wil.detect(group, count[x,])}, cl = ncore)
-      }
-      
-    } else if(length(latent.factor0) == 0){
-      
+    if(length(latent.factor0) == 0) {
+
       if(method == 'NB'){
         result = pblapply(1L:length(gene0), FUN = function(x){NB.detect(group, unlist(lapply(count, FUN = function(y){y[x,]})))}, cl = ncore)
       } else if(method == 'QP') {
@@ -666,59 +515,25 @@ scDEG <- function(
   } else {
     
     count = count[, colnames(count) %in% unique(c(cell1, cell2)), drop = FALSE]
-    rowsum0 = Matrix::rowSums(count > 0)
-    percent0 = round(rowsum0 / (length(cell1) + length(cell2)), digits = 2)
-    keep = rowsum0 > floor(min(length(cell1), length(cell2)) * frac)
+    rowsum1 = Matrix::rowSums(count[, colnames(count) %in% cell1, drop = FALSE] > 0)
+    rowsum2 = Matrix::rowSums(count[, colnames(count) %in% cell2, drop = FALSE] > 0)
+    percent0 = (rowsum1 + rowsum2) / (length(cell1) + length(cell2))
+    percent1 = rowsum1 / length(cell1)
+    percent2 = rowsum2 / length(cell2)
+    keep = (rowsum1 + rowsum2) > floor((length(cell1) + length(cell2)) * frac)
     percent0 = percent0[keep]
+    percent1 = percent1[keep]
+    percent2 = percent2[keep]
     count = count[keep, , drop = FALSE]
     gene0 = rownames(object@rowdata)[keep]
     ave1 = Matrix::rowMeans(count[, colnames(count) %in% cell1, drop = FALSE])
     ave2 = Matrix::rowMeans(count[, colnames(count) %in% cell2, drop = FALSE])
-    
-    if(fast & length(cell2) > bin_ctrl){
-      
-      cell1 = data.frame(id = cell1, seq = 1L:length(cell1))
-      rownames(cell1) = cell1$id
-      
-      if(length(cell1) <= bin_sam){
-        count1 = count[, colnames(count) %in% cell1$id, drop = FALSE]
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-      } else {
-        bin1 = cut(cell1$seq, breaks = bin_sam, labels = FALSE)
-        cell1$bin = as.factor(bin1)
-        count1 = aggregate.Matrix(x = Matrix::t(count[, colnames(count) %in% cell1$id, drop = FALSE]), groupings = cell1$bin, fun = "mean")
-        count1 = Matrix::t(count1)
-        rownames(count1) = rownames(count)
-        colnames(count1) = cell1 = paste0("sam_", 1L:ncol(count1))
-      }
-      
-      cell2 = data.frame(id = cell2, seq = 1L:length(cell2))
-      rownames(cell2) = cell2$id
-      
-      bin2 = cut(cell2$seq, breaks = bin_ctrl, labels = FALSE)
-      cell2$bin = as.factor(bin2)
-      count2 = aggregate.Matrix(x = Matrix::t(count[, colnames(count) %in% cell2$id, drop = FALSE]), groupings = cell2$bin, fun = "mean")
-      count2 = Matrix::t(count2)
-      rownames(count2) = rownames(count)
-      colnames(count2) = cell2 = paste0("ctrl_", 1L:ncol(count2))
-      
-      count = cbind(count2, count1)
-      group1 = rep('sam', length(cell1))
-      group2 = rep('ctrl', length(cell2))
-      group = factor(c(group2, group1), levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      latent.factor0 = NULL
-      
-    } else {
-      
-      group = rep('ctrl', nrow(coldata))
-      group[rownames(coldata) %in% cell1] = 'sam'
-      group = factor(group, levels = c('ctrl', 'sam'))
-      group = as.integer(group)
-      fast = FALSE
-      
-    }
-    
+
+    group = rep('ctrl', nrow(coldata))
+    group[rownames(coldata) %in% cell1] = 'sam'
+    group = factor(group, levels = c('ctrl', 'sam'))
+    group = as.integer(group)
+
     if(length(latent.factor0) == 0){
       
       if(method == 'NB'){
@@ -749,24 +564,22 @@ scDEG <- function(
   result = as.matrix(result)
   
   colnames(result) = c('log2FC', 'Pvalue')
-  result = data.frame(Symbol = gene0, Percent = percent0, avelogCtl = ave2, avelogSam = ave1, result)
+  result = data.frame(Symbol = gene0, Percent = percent0, Pct.Ctl = percent1, Pct.Sam = percent2, avelog.Ctl = ave2, avelog.Sam = ave1, result)
   result$Padj = p.adjust(result$Pvalue, method = 'BH')
   result = result[order(result$Pvalue, decreasing = FALSE),]
   # result$avelogCtl = sapply(result$avelogCtl, FUN = function(x){log1p_2(x)})
   # result$avelogSam = sapply(result$avelogSam, FUN = function(x){log1p_2(x)})
   
-  if(is.null(Padj)){
-    result0 = result[result$Pvalue < 0.05 & abs(result$log2FC) >= log2FC,]
+  Padj = as.numeric(Padj)
+  if(Padj == 1) {
+    result0 = result
   } else {
-    Padj = as.numeric(Padj)
-    
-    if(Padj == 1) {
-      result0 = result
-    } else {
-      result0 = result[result$Padj < Padj & abs(result$log2FC) >= log2FC,]
-    }
-    
+    result0 = result[result$Padj < Padj & abs(result$log2FC) >= log2FC,]
   }
+  
+  result0$Percent = format(x = round(x = as.numeric(result0$Percent), digits = 3), nsmall = 3)
+  result0$Pct.Ctl = format(round(x = as.numeric(result0$Pct.Ctl), digits = 3), nsmall = 3)
+  result0$Pct.Sam = format(round(x = as.numeric(result0$Pct.Sam), digits = 3), nsmall = 3)
   
   return(result0)
   

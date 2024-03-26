@@ -212,7 +212,7 @@ scNormalize <- function(
   libsize = 1e+06, 
   remove.mito = FALSE, 
   norm.dis = TRUE, 
-  large = FALSE, 
+  large = TRUE, 
   ncore = 1
   ){
   
@@ -264,7 +264,7 @@ scNormalize <- function(
       }
       
       if(large){
-        count = winsorizing(count)
+        count = winsorize(count)
         count = as(count, 'CsparseMatrix')
       } else {
         
@@ -363,23 +363,26 @@ scScale <- function(object, method = 'scale', center = TRUE, scale = FALSE){
 #' 
 #' @rdname Disperse
 #' @param object RISC object: a framework dataset.
+#' @param method What method is used to define dispersion, now support "QP" and "loess", 
+#' the default method is "loess".
+#' @param min.UMI A cutoff of the minimum UMIs of each gene, the genes expression 
+#' below the min.UMI will be discarded from highly variable genes. The default value
+#' is 100 when input NULL.
 #' @param mean.cut A cutoff of the average value of each gene, the genes expression 
 #' outside the mean.cut range will be discarded from highly variable genes. The 
 #' input is a range vector, like c(0.1, 5).
-#' @param ncut The number of fragments using to fit dispersion. The Quasi-Poinsson 
-#' model divides genes into a number of bins based on the gene expression. This 
-#' parameter indicated how many bins are used for Quasi-Poinsson model.
+#' @param QP_bin The number of fragments using to fit dispersion in the Quasi-Poinsson 
+#' model, how many bins are formed in the regression.
+#' @param lspan The number of parameter using to fit dispersion, controlling the degree 
+#' of smoothing in the loess model.
 #' @param top.var The maximum number of highly variable genes, the default is NULL, 
 #' including all the highly variable genes.
-#' @param method What method is used to define dispersion: quasipoisson or residual.
-#' The default method is "Quasi-Poisson".
-#' @param ratio To change mean.cut by ratio, and make RISC robustly to select 
-#' variable genes. The user can use the default value.
-#' @param FDR The cutoff for variable genes.
+#' @param pval The P-value is used to cut off the highly variable genes, 
+#' the default is 0.5.
 #' @return RISC single cell dataset, the metadata slot.
 #' @name scDisperse
 #' @importFrom Matrix rowMeans
-#' @importFrom stats gaussian glm median p.adjust pchisq quasipoisson poisson sd
+#' @importFrom stats gaussian glm loess median p.adjust pchisq quasipoisson poisson sd
 #' @references Liu et al., Nature Biotech. (2021)
 #' @export
 #' @examples 
@@ -391,12 +394,13 @@ scScale <- function(object, method = 'scale', center = TRUE, scale = FALSE){
 
 scDisperse <- function(
   object, 
-  method = "quasipoisson", 
+  method = "loess", 
+  min.UMI = NULL, 
   mean.cut = NULL, 
-  ncut = 20, 
-  top.var = NULL, 
-  FDR = 0.1, 
-  ratio = 1.25
+  QP_bin = 100, 
+  lspan = 0.05, 
+  top.var = NULL,
+  pval = 0.5
 ){
   
   if(length(object@metadata) == 0 | length(object@metadata$normalise) == 0){
@@ -404,14 +408,24 @@ scDisperse <- function(
   } else {
     
     method = as.character(method)
-    ncut = as.integer(ncut)
-    ratio = as.numeric(ratio)
-    FDR0 = as.numeric(FDR)
+    QP_bin = as.integer(QP_bin)
+    lspan = as.numeric(lspan)
+    pval = as.numeric(pval)
+    
+    if(is.null(min.UMI)){
+      min.UMI = 100
+    } else {
+      min.UMI = as.numeric(min.UMI)
+    }
     
     count = object@assay$logcount
-    # count = as.matrix(object@assay$logcount)
-    keep = Matrix::rowSums(count > 0) > min(floor(ncol(count)/400), 10)
+    remove.gene = grep(pattern = '^rp[l|s]|^mt-', x = rownames(count), ignore.case = TRUE, value = TRUE)
+    keep_valid = (!rownames(count) %in% remove.gene)
+    keep_cell = Matrix::rowSums(count > 0) > min(floor(ncol(count)/400), 10)
+    keep_umi = Matrix::rowSums(count) > min.UMI
+    keep = keep_cell & keep_umi & keep_valid
     count = count[keep,]
+    df = dim(count)[2] - 1
     
     sc.mean = abs(Matrix::rowMeans(count))
     sc.sd = abs(sparseMatrixStats::rowSds(count))
@@ -427,9 +441,9 @@ scDisperse <- function(
       mean.max = mean.cut[2]
     }
     
-    if(method == "quasipoisson"){
+    if(method == "QP"){
       
-      bin = cut(sc.mean, c(-1, quantile(sc.mean, probs = seq(0, 1, 1/ncut))[2:(ncut+1)]), labels = FALSE)
+      bin = cut(sc.mean, c(-1, quantile(sc.mean, probs = seq(0, 1, 1/QP_bin))[2:(QP_bin+1)]), labels = FALSE)
       fit = rep(0, length(sc.mean))
       names(bin) = names(fit) = names(sc.sd) = names(sc.disp) = names(sc.mean)
       
@@ -440,34 +454,35 @@ scDisperse <- function(
         i = i + 1L
       }
       
-      disp = data.frame(Mean = sc.mean, SD = sc.sd, Dispersion = sc.disp, Disperse.fit = sc.disp/(fit/sc.mean), stringsAsFactors = FALSE)
-      disp0 = disp[disp$Dispersion > 0.5 & disp$Disperse.fit > 1 & disp$Mean >= mean.min & disp$Mean <= mean.max,]
-      var.gene = rownames(disp0)
+    } else if(method == "loess") {
       
-      if(is.null(top.var)){
-        var.gene = var.gene
-      } else {
-        
-        while(length(var.gene) > top.var){
-          mean.min = mean.min*ratio
-          mean.max = mean.max*ratio
-          FDR.cut = FDR0
-          disp1 = disp[disp$Dispersion > 0.5 & disp$Disperse.fit > 1 & disp$Mean >= mean.min & disp$Mean <= mean.max,]
-          pval = pchisq(disp1$Disperse.fit*(length(disp1$Disperse.fit)-1), (length(disp1$Disperse.fit)-1), lower.tail = FALSE)
-          FDR = p.adjust(pval, method = 'BH')
-          names(FDR) = names(pval) = rownames(disp1)
-          FDR = FDR[order(FDR, decreasing = FALSE)]
-          var.gene = names(FDR)[FDR < FDR.cut]
-        }
-        
-      }
+      fit = loess(sc.sd ~ sc.mean, span = lspan)$fitted
       
     } else {
-      stop('Input method quasipoisson or residual')
+      stop('Currently only support "QP" and "loess" model')
+    }
+    
+    disp = data.frame(Mean = sc.mean, SD = sc.sd, Dispersion = sc.disp, Disperse.fit = sc.disp/(fit/sc.mean), stringsAsFactors = FALSE)
+    pval0 = pchisq(q = disp$Disperse.fit*df, df = df, lower.tail = FALSE)
+    disp0 = disp[disp$Dispersion > 0.5 & disp$Disperse.fit > 1 & disp$Mean >= mean.min & disp$Mean <= mean.max & pval0 < pval,]
+    disp0 = disp0[order(disp0$Disperse.fit, decreasing = TRUE),]
+    var.gene = rownames(disp0)
+    
+    # pval = pchisq(disp0$Disperse.fit*(length(disp0$Disperse.fit)-1), (length(disp0$Disperse.fit)-1), lower.tail = FALSE)
+    # FDR = p.adjust(pval, method = 'BH')
+    # names(FDR) = names(pval) = rownames(disp0)
+    # FDR = FDR[order(FDR, decreasing = FALSE)]
+    
+    if(is.null(top.var)){
+      var.gene = var.gene
+    } else if(length(var.gene) > top.var) {
+      var.gene = rownames(disp0)[1:top.var]
+    } else {
+      var.gene = var.gene
     }
     
     object@metadata[['dispersion']] = disp
-    object@metadata[['dispersion.var']] = disp0[order(disp0$Disperse.fit, decreasing = TRUE),]
+    object@metadata[['dispersion.var']] = disp0
     object@vargene = var.gene
     return(object)
     
@@ -491,6 +506,14 @@ winsorizing <- function(y){
   x = y@x
   lmax = qnorm(seq(0, 1, length.out = length(x) %/% 2), mean = mean(x), sd = sd(x), lower.tail = FALSE)[2]
   x[x > lmax] = ceiling(lmax)
+  y@x = x
+  return(y)
+}
+
+winsorize <- function(y){
+  x = y@x
+  lmax = quantile(x, probs = (1 - 10/length(x)))
+  x[x > lmax] = lmax
   y@x = x
   return(y)
 }

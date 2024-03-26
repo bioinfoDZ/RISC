@@ -14,14 +14,16 @@ Heat(
   sample_bin = FALSE,
   ann_col = NULL,
   lim = NULL,
-  smooth = "loess",
+  smooth = "smooth",
   span = 0.75,
   degree = 1,
   palette = NULL,
   num = 50,
   con.bin = TRUE,
   cell.lab.size = 10,
-  gene.lab.size = 5
+  gene.lab.size = 5,
+  value_only = FALSE,
+  ...
 )
 }
 \arguments{
@@ -47,8 +49,8 @@ The default is 0, without clustering genes.}
 
 \item{lim}{The gene expression range shown at heat-maps.}
 
-\item{smooth}{If use smooth to adjust heatmap, the default is "loess" and another
-choice is "smooth".}
+\item{smooth}{If use smooth to adjust heatmap, the default is "smooth" and another
+choice is "loess".}
 
 \item{span}{The loess span.}
 
@@ -64,6 +66,8 @@ brewer.pal(n = 7, name = "RdYlBu").}
 \item{cell.lab.size}{The font size for column.}
 
 \item{gene.lab.size}{The font size for row.}
+
+\item{value_only}{Only return values.}
 }
 \description{
 The "Heat" map makes heatmap to show gene expression patterns of single cells. 

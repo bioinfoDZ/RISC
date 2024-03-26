@@ -13,10 +13,7 @@ AllMarker(
   latent.factor = NULL,
   min.cells = 25L,
   method = "QP",
-  ncore = 1,
-  fast = FALSE,
-  bin_bg = 500,
-  bin_cl = 100
+  ncore = 1
 )
 }
 \arguments{
@@ -24,8 +21,8 @@ AllMarker(
 
 \item{positive}{Whether only output the cluster markers with positive log2FC.}
 
-\item{frac}{A fraction cutoff, the cluster marker genes expressed at least a 
-cutoff fraction of the cluster cells.}
+\item{frac}{A fraction cutoff, the marker genes expressed at least a 
+cutoff fraction of all the cells.}
 
 \item{log2FC}{The cutoff of log2 Fold-change for differentially expressed marker 
 genes.}
@@ -42,12 +39,6 @@ for Negative Binomial model, 'QP' for QuasiPoisson model, and 'Wilcox' for Wilco
 Rank Sum and Signed Rank model.}
 
 \item{ncore}{The multiple cores for parallel calculating.}
-
-\item{fast}{In the fast way, making cell bins to calculate marker genes.}
-
-\item{bin_bg}{When run fast, how many cell bins will use in background cells.}
-
-\item{bin_cl}{When run fast, how many cell bins will use in cluster cells.}
 }
 \description{
 This function depends on "scMarker" function by using the same criteria, and 
