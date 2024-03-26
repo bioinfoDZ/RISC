@@ -4,6 +4,8 @@
 ### Overview
 Integrated analysis of single cell RNA-sequencing (scRNA-seq) data from multiple batches or studies is often necessary in order to learn functional changes in cellular states upon experimental perturbations or cell type relationships in a developmental lineage. Here we introduce a new algorithm (RPCI) that uses the gene-eigenvectors from a reference dataset to establish a global frame for projecting all datasets, with a clear advantage in preserving genuine gene expression differences in matching cell types between samples, such as those present in cells at distinct developmental stages or in perturbated vs control studies. This R package “RISC” (Robust Integration of Sinlgle Cell RNA-seq data implements the RPCI algorithm, with additional functions for scRNA-seq analysis, such as clustering cells, identifying cluster marker genes, detecting differentially expressed genes between experimental conditions, and importantly outputting integrated gene expression values for downstream data analysis.
 
+#### RISC v1.7 update
+This version mainly solves the problems that are caused by the update of dependent package igraph. We also add clustering resolution parameters ('res') in InPlot and scCluster (for 'louvain' method) funcitons.
 
 #### RISC v1.6 update
 This version mainly solves the problems that are caused by dependent package updates
@@ -31,7 +33,8 @@ Removed old functions <br />
 
 #### Install dependent packages:
 ```
-install.packages(c("Matrix", "sparseMatrixStats", "Matrix.utils", "irlba", "doParallel", "foreach", "data.table", "Rtsne", "umap", "MASS", "pbapply", "Rcpp", "RcppArmadillo", "densityClust", "FNN", "igraph", "RColorBrewer", "ggplot2", "gridExtra", "pheatmap", "hdf5r"))
+install.packages(c("Matrix", "irlba", "doParallel", "foreach", "Rtsne", "umap", "MASS", "pbapply", "Rcpp", "RcppArmadillo", "densityClust", "FNN", "igraph", "RColorBrewer", "ggplot2", "gridExtra", "pheatmap", "hdf5r"))
+BiocManager::install("sparseMatrixStats")
 ```
 
 #### Install RISC:
