@@ -49,12 +49,12 @@ install.packages("/Path/to/RISC_1.7.tar.gz", repos = NULL, type = "source")
 
 
 ### vignettes
-Here we provide a vignettes which shows the key steps in analyzing example scRNA-seq datasets from the basal or squamous carcinoma patients before and after anti-PD-1 therapy (GSE123813). 
+Here we provide a vignette which shows the key steps in analyzing example scRNA-seq datasets from the basal or squamous carcinoma patients before and after anti-PD-1 therapy (GSE123813). Please also check the RISC functions for reading data directly from h5 files. 
 
 #### RISC   v1.0 <a href="https://github.com/bioinfoDZ/RISC/blob/master/GSE123813_Vignette_RISC_v1.0.pdf" download="GSE123813_Vignette_RISC_v1.0.pdf">Link</a>
 #### RISC   v1.6 <a href="https://github.com/bioinfoDZ/RISC/blob/master/GSE123813_Vignette_RISC_v1.6.pdf" download="GSE123813_Vignette_RISC_v1.6.pdf">Link</a>
 
-We also provide an example how to convert Seurat object to RISC object (to use the new features, please reinstall RISC package)
+We also provide an example of how to convert a Seurat object to a RISC object (to use the new features, please reinstall RISC package), similarly one can convert a RISC object to a Seurat object. 
 
 #### RISC v1.0   <a href="https://github.com/bioinfoDZ/RISC/blob/master/Seurat_to_RISC_RISC_v1.0.pdf" download="Seurat_to_RISC_RISC_v1.0.pdf">Link</a>
 #### Notice, RISC v1.6 package is developed in R (v4.2.2), we test this vignette in the same R version.
@@ -64,7 +64,7 @@ We also provide an example how to convert Seurat object to RISC object (to use t
 #### Contents:
 (1) RISC package: "RISC_1.7.tar.gz" <br />
 (2) Vignette for GSE123813: "GSE123813_Vignette_RISC_v1.6.pdf" <br />
-(3) GSE123813 directory contains the informaiton of cell-type, patients and treatment.
+(3) GSE123813 directory contains the information of cell-type, patients and treatment.
 file position, "/GSE123813/Raw_Data/bcc_annotation.tsv" <br />
 
 Old RISC version: "RISC_1.0.tar.gz"
